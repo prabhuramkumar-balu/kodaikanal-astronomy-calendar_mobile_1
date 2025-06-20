@@ -26,7 +26,7 @@ st.markdown("#### 📍 Location: Kodaikanal, India")
 st.markdown("**🗺 Latitude:** 10.2306° N &nbsp;&nbsp;&nbsp; **🗺 Longitude:** 77.4686° E")
 st.markdown("**🏔 Altitude:** 2343 m")
 
-# --- Session State ---
+# --- Session State for Selected Date ---
 if "selected_date" not in st.session_state:
     st.session_state.selected_date = now_ist.date()
 
@@ -43,34 +43,34 @@ today = now_ist.date()
 
 weekday_labels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 
-# Prepare calendar table data (as strings with markdown for coloring)
+# Prepare calendar table data (strings with markdown for coloring)
 table_data = [weekday_labels]
 
 for week in cal:
     row = []
     for day in week:
         if day == 0:
-            row.append("")  # Empty day cells
+            row.append("")  # Empty cell
         else:
             dt = date(year, month_num, day)
             if dt == today:
-                row.append(f"**:orange[{day}]**")  # orange for today
+                row.append(f"**:orange[{day}]**")  # Orange today
             elif dt == st.session_state.selected_date:
-                row.append(f"**:blue[{day}]**")    # blue for selected day
+                row.append(f"**:blue[{day}]**")    # Blue selected
             else:
                 row.append(str(day))
     table_data.append(row)
 
-# Convert to DataFrame
+# Convert to DataFrame for display
 df = pd.DataFrame(table_data[1:], columns=table_data[0])
 
 st.markdown("### 📅 Calendar")
 st.markdown("**Legend:** :orange[Today]  |  :blue[Selected Day]")
 
-# Display calendar table (markdown formatting works inside st.write)
+# Show calendar table as markdown (streamlit supports markdown tables)
 st.write(df.to_markdown(index=False), unsafe_allow_html=True)
 
-# Day picker dropdown
+# Day selection dropdown
 days_in_month = [day for week in cal for day in week if day != 0]
 default_index = 0
 if (st.session_state.selected_date.year == year) and (st.session_state.selected_date.month == month_num):
@@ -83,6 +83,7 @@ selected_day = st.selectbox("Select a Day", days_in_month, index=default_index)
 st.session_state.selected_date = date(year, month_num, selected_day)
 
 # --- Astronomy Calculations ---
+
 sel = st.session_state.selected_date
 st.markdown("---")
 st.header(f"🌠 Astronomy Data for {sel.strftime('%A, %d %B %Y')}")
@@ -94,12 +95,12 @@ def to_ist(dt):
 sun_times = sun(location.observer, date=sel, tzinfo=IST)
 sunrise, sunset, solar_noon = [sun_times[k].strftime("%I:%M %p") for k in ("sunrise", "sunset", "noon")]
 
-# Observer Setup
+# Ephem Observer Setup
 observer = ephem.Observer()
 observer.lat, observer.lon = str(location.latitude), str(location.longitude)
 observer.date = datetime(sel.year, sel.month, sel.day).strftime('%Y/%m/%d')
 
-# Moon Phase Name Helper (corrected)
+# Moon phase naming helper
 def moon_phase_name(phase):
     if phase < 1:
         return "New Moon"
@@ -118,7 +119,7 @@ def moon_phase_name(phase):
     else:
         return "Waning Crescent"
 
-# Moon & Planet Data
+# Get rise/set/zenith times for a celestial body
 def get_times(body):
     observer.date = datetime(sel.year, sel.month, sel.day)
     try:
@@ -135,12 +136,12 @@ def get_times(body):
         zen = None
     return to_ist(rise), to_ist(set_), to_ist(zen)
 
-# Moon
+# Moon data
 moon = ephem.Moon(observer)
 moon_phase_txt = f"{moon.phase:.1f}% ({moon_phase_name(moon.phase)})"
 moon_rise, moon_set, moon_zen = get_times(moon)
 
-# Planets
+# Planets data
 planets = {
     "Mercury": ephem.Mercury(),
     "Venus": ephem.Venus(),
@@ -153,7 +154,8 @@ planet_times = {}
 for name, body in planets.items():
     planet_times[name] = get_times(body)
 
-# --- Display Sections ---
+# --- Display Astronomy Data ---
+
 with st.expander("🌅 Sun"):
     st.write(f"**Sunrise:** {sunrise}")
     st.write(f"**Solar Noon (Zenith):** {solar_noon}")
@@ -165,11 +167,12 @@ with st.expander("🌕 Moon"):
     st.write(f"**Moonset:** {moon_set}")
     st.write(f"**Moon Zenith:** {moon_zen}")
 
-# Planet Table
+# Planetary rise/set/zenith table
 planet_df = pd.DataFrame.from_dict(
     planet_times,
     orient="index",
     columns=["Rise (IST)", "Set (IST)", "Zenith (IST)"]
 )
+
 with st.expander("🪐 Planetary Rise/Set & Zenith Times"):
     st.dataframe(planet_df, use_container_width=True)
